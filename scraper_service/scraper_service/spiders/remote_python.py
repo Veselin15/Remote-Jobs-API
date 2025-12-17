@@ -4,22 +4,26 @@ from datetime import date
 
 class RemotePythonSpider(scrapy.Spider):
     name = "remote_python"
-    # We will start with a specific job board or search result page
-    # For this example, we'll use a search query on a mock-friendly site or a real one.
-    # Let's try PyJobs (it's specific to Python).
-    start_urls = ["https://www.pyjobs.com/jobs"]
+    # We are switching to python.org because it is very stable for learning
+    start_urls = ["https://www.python.org/jobs/"]
 
     def parse(self, response):
-        # Loop through each job card on the page
-        # Note: Selectors (.css) depend on the website's HTML structure.
-        # These are examples and might need adjustment if PyJobs changes layout.
+        # Python.org lists jobs in an <ol> with class 'list-recent-jobs'
+        for job in response.css("ol.list-recent-jobs li"):
+            # Extracting the 'a' tag which contains the title and link
+            title_tag = job.css("h2.listing-company a")
 
-        for job in response.css("div.job-listing"):
+            # Extract company name (it's often inside a span with class 'listing-company-name')
+            # We strip() to remove extra whitespace/newlines
+            company_text = job.css("span.listing-company-name::text").getall()
+            # join helps if the text is split across multiple lines
+            company = "".join(company_text).strip().split('\n')[-1].strip()
+
             yield {
-                'title': job.css("h2.job-title::text").get(),
-                'company': job.css("span.company-name::text").get(),
-                'location': "Remote",  # Defaulting for now
-                'url': response.urljoin(job.css("a::attr(href)").get()),
-                'source': "PyJobs",
-                'posted_at': date.today()  # Placeholder, ideally we parse the date
+                'title': title_tag.css("::text").get(),
+                'company': company,
+                'location': job.css("span.listing-location::text").get(),
+                'url': response.urljoin(title_tag.css("::attr(href)").get()),
+                'source': "Python.org",
+                'posted_at': date.today()
             }
