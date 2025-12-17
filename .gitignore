@@ -1,0 +1,35 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# --- Virtual Environment ---
+venv/
+env/
+.env
+.venv/
+
+# --- Django ---
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# --- Scrapy ---
+.scrapy/
+*.egg-info/
+build/
+dist/
+
+# --- PyCharm (JetBrains) ---
+# It is important to ignore these so your personal IDE settings
+# don't mess up code for other developers later.
+.idea/
+*.iml
+
+# --- Operating System ---
+.DS_Store
+Thumbs.db
