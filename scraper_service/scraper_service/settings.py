@@ -6,6 +6,19 @@
 #     https://docs.scrapy.org/en/latest/topics/settings.html
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+import os
+import sys
+import django
+
+# 1. Add the project root to the Python path
+# This allows Scrapy to "see" the 'jobs' and 'config' folders
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+# 2. Point to the Django settings file
+os.environ['DJANGO_SETTINGS_MODULE'] = 'config.settings'
+
+# 3. Initialize Django
+django.setup()
 
 BOT_NAME = "scraper_service"
 
