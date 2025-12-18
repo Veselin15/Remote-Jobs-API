@@ -5,44 +5,75 @@ from datetime import date
 class LinkedInSpider(scrapy.Spider):
     name = "linkedin"
 
-    # 1. The Entry Point
     def start_requests(self):
-        # We search for "Python" in "Europe" (GeoID 91000000 for Europe-wide)
-        # We use the 'seeMoreJobPostings' internal API which is easier to scrape
+        # Search for Python jobs in Europe
         base_url = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=Python&location=Europe&start={}"
-
-        # Scrape the first 5 pages (0, 25, 50, 75, 100)
+        # We scrape pages 0, 25, 50, 75, 100
         for i in range(0, 101, 25):
             yield scrapy.Request(url=base_url.format(i), callback=self.parse_list)
 
-    # 2. Parse the List of Jobs
     def parse_list(self, response):
-        # The API returns a list of <li> elements. We loop through them.
+        # Loop through each job card
         for job in response.css("li"):
 
-            # Extract the simplified data
+            # Extract basic info
             title = job.css("h3.base-search-card__title::text").get()
             company = job.css("h4.base-search-card__subtitle a::text").get()
             location = job.css("span.job-search-card__location::text").get()
-
-            # We need the direct URL to get the full description (and to save it)
-            # The 'href' usually includes tracking garbage, we clean it.
             raw_url = job.css("a.base-card__full-link::attr(href)").get()
 
-            if title and raw_url:
-                clean_title = title.strip()
-                clean_company = company.strip() if company else "Unknown"
-                clean_location = location.strip() if location else "Remote"
-                clean_url = raw_url.split('?')[0]  # Remove tracking params
+            if not title or not raw_url:
+                continue
 
-                # 3. Save the Data
-                # Note: LinkedIn doesn't give "posted_at" easily in this view,
-                # so we use today's date.
-                yield {
-                    'title': clean_title,
-                    'company': clean_company,
-                    'location': clean_location,
-                    'url': clean_url,
+            # TRICK: Extract the Job ID to call the Detail API
+            # URL looks like: https://uk.linkedin.com/jobs/view/412345678?...
+            # We want "412345678"
+            try:
+                # Split by 'view/' and take the part after it, then split by '?' or '/'
+                job_id = raw_url.split("view/")[1].split("/")[0].split("?")[0]
+
+                # Construct the "Secret" Guest Detail API URL
+                detail_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
+
+                # Clean strings
+                item = {
+                    'title': title.strip(),
+                    'company': company.strip() if company else "Unknown",
+                    'location': location.strip() if location else "Remote",
+                    'url': raw_url.split('?')[0],
                     'source': "LinkedIn",
                     'posted_at': date.today()
                 }
+
+                # Follow the link to get the description
+                yield scrapy.Request(url=detail_url, callback=self.parse_detail, meta={'item': item})
+
+            except IndexError:
+                # If URL format is weird, skip detail parsing and just save what we have
+                yield {
+                    'title': title.strip(),
+                    'company': company.strip() if company else "Unknown",
+                    'location': location.strip() if location else "Remote",
+                    'url': raw_url.split('?')[0],
+                    'source': "LinkedIn",
+                    'posted_at': date.today(),
+                    'description': ""
+                }
+
+    def parse_detail(self, response):
+        # Retrieve the item we passed from the previous function
+        item = response.meta['item']
+
+        # Extract the full description text
+        # LinkedIn Guest view usually puts it in 'div.show-more-less-html__markup'
+        description_html = response.css("div.show-more-less-html__markup").get()
+
+        # We strip HTML tags to just get the text for scanning
+        if description_html:
+            # Simple text extraction (removes <br>, <div> etc)
+            text_content = response.css("div.show-more-less-html__markup *::text").getall()
+            item['description'] = " ".join(text_content).strip()
+        else:
+            item['description'] = ""
+
+        yield item
