@@ -145,7 +145,7 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle'
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '3/day',  # Unauthenticated users (if you allowed them)
+        'anon': '100/day',  # Unauthenticated users (if you allowed them)
         'user': '1000/day' # API Key holders
     }
 }
