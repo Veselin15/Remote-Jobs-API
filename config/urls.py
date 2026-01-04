@@ -16,10 +16,12 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from jobs.views import JobListAPI
+from jobs.views import JobListAPI, ScrapeTriggerAPI  # <--- Import the new view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # This is your new API endpoint
     path('api/jobs/', JobListAPI.as_view(), name='job-list'),
+
+    # New Endpoint for triggering scrapes
+    path('api/scrape/', ScrapeTriggerAPI.as_view(), name='job-scrape'),
 ]
