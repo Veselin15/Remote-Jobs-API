@@ -9,6 +9,7 @@ class Job(models.Model):
     posted_at = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     description = models.TextField(null=True, blank=True)
+    skills = models.JSONField(default=list, blank=True)
     salary_min = models.IntegerField(null=True, blank=True)
     salary_max = models.IntegerField(null=True, blank=True)
     currency = models.CharField(max_length=10, null=True, blank=True)
