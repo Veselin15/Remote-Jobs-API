@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     # Third-party apps
     'rest_framework',
     'rest_framework_api_key',
+    'drf_spectacular',
 
     # Your apps
     'jobs',
@@ -147,4 +148,12 @@ REST_FRAMEWORK = {
         'jobs.throttles.FreeTierThrottle',
         'jobs.throttles.PremiumTierThrottle',
     ],
+
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Remote Jobs API',
+    'DESCRIPTION': 'A specialized API for finding remote tech jobs on LinkedIn.',
+    'VERSION': '1.0.0',
 }

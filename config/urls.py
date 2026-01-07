@@ -16,12 +16,17 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from jobs.views import JobListAPI, ScrapeTriggerAPI  # <--- Import the new view
-
+from jobs.views import JobListAPI, ScrapeTriggerAPI
+from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/jobs/', JobListAPI.as_view(), name='job-list'),
 
     # New Endpoint for triggering scrapes
     path('api/scrape/', ScrapeTriggerAPI.as_view(), name='job-scrape'),
+
+# --- Swagger Documentation ---
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    # This is the magic link:
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 ]
