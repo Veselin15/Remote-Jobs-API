@@ -13,7 +13,7 @@ TECH_KEYWORDS = [
 
 def extract_skills(text):
     """
-    Scans the text for keywords and returns a list of unique matches.
+    Finds skills but ignores them if they appear near 'no experience' phrases.
     """
     if not text:
         return []
@@ -22,20 +22,60 @@ def extract_skills(text):
     text_lower = text.lower()
 
     for skill in TECH_KEYWORDS:
-        # Use regex to find whole words only (avoids matching "Go" in "Google")
-        # re.escape handles special chars like C++
-        pattern = r'\b' + re.escape(skill.lower()) + r'\b'
+        # Escape the skill for regex (e.g., C++)
+        skill_esc = re.escape(skill.lower())
+        pattern = r'\b' + skill_esc + r'\b'
 
-        # C++ and C# need special handling because boundaries \b ignore + and #
+        # C++ and C# handling
         if skill in ["C++", "C#"]:
-            if skill.lower() in text_lower:
+            pattern = re.escape(skill.lower())
+
+        # Find all occurrences of the skill
+        for match in re.finditer(pattern, text_lower):
+            start, end = match.span()
+
+            # Context Window: 50 chars before and 50 chars after
+            # This lets us see "no experience with Java"
+            context_start = max(0, start - 50)
+            context_end = min(len(text_lower), end + 50)
+            context_window = text_lower[context_start:context_end]
+
+            # Check for negations in this window
+            is_negative = False
+            for neg in NEGATION_PATTERNS:
+                if re.search(neg, context_window):
+                    is_negative = True
+                    break
+
+            if not is_negative:
                 found_skills.add(skill)
-        elif re.search(pattern, text_lower):
-            found_skills.add(skill)
+                # Once found valid, move to next skill (no need to check other matches of same skill)
+                break
 
     return list(found_skills)
 
 
+def extract_seniority(title, description):
+    """
+    Determines seniority. Title has higher priority than description.
+    """
+    text_title = title.lower() if title else ""
+    text_desc = description.lower() if description else ""
+
+    # 1. Check Title First (Strongest Signal)
+    for level, keywords in SENIORITY_MAP.items():
+        for kw in keywords:
+            if re.search(r'\b' + kw + r'\b', text_title):
+                return level
+
+    # 2. Check Description (Weaker Signal)
+    for level, keywords in SENIORITY_MAP.items():
+        for kw in keywords:
+            if re.search(r'\b' + kw + r'\b', text_desc):
+                return level
+
+    # Default
+    return "Not Specified"
 def parse_salary(text):
     if not text:
         return None, None, None
