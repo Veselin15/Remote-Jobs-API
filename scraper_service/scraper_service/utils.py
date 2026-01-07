@@ -1,6 +1,6 @@
 import re
 
-# 1. Define the Skills List (Add more as you see fit)
+# 1. Define the Skills List
 TECH_KEYWORDS = [
     "Python", "Django", "Flask", "FastAPI", "React", "Angular", "Vue", "Node.js",
     "JavaScript", "TypeScript", "HTML", "CSS", "SQL", "PostgreSQL", "MySQL",

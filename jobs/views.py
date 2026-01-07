@@ -15,6 +15,25 @@ class JobListAPI(generics.ListAPIView):
     filterset_fields = ['company', 'source', 'location', 'currency', 'salary_min']
     search_fields = ['title', 'company', 'location', 'skills']
 
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+
+        # If the database returns empty results AND the user searched for something
+        if len(response.data['results']) == 0:
+            search_term = request.query_params.get('search')
+            if search_term:
+                # Automatically trigger the robot to go find this for next time
+                print(f"No results for {search_term}. Triggering scraper...")
+                run_scrapers.delay(keyword=search_term, location="Europe")
+
+                # Tell the user what happened
+                return Response({
+                    "message": "No jobs found yet. We have started a live scrape for you. Check back in 2 minutes!",
+                    "results": []
+                })
+
+        return response
+
 
 # --- New: Define what the User should send ---
 class ScrapeRequestSerializer(serializers.Serializer):
