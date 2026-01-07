@@ -1,19 +1,38 @@
 from rest_framework import generics, filters, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema  # <--- New Import for Documentation
+from django_filters import rest_framework as django_filters # <--- Rename for clarity
+from drf_spectacular.utils import extend_schema
 from .models import Job
 from .serializers import JobSerializer
 from .tasks import run_scrapers
 
+# --- 1. Define the Custom Filter (The Input Boxes) ---
+class JobFilter(django_filters.FilterSet):
+    # specific boxes for searching
+    title = django_filters.CharFilter(lookup_expr='icontains')
+    company = django_filters.CharFilter(lookup_expr='icontains')
+    location = django_filters.CharFilter(lookup_expr='icontains')
+
+    # The "Skills" box you wanted!
+    # (We search the text inside the JSON list)
+    skills = django_filters.CharFilter(field_name='skills', lookup_expr='icontains')
+
+    # Keep salary filter
+    salary_min = django_filters.NumberFilter(field_name='salary_min', lookup_expr='gte')
+
+    class Meta:
+        model = Job
+        # We explicitly list ONLY what we want. 'currency' is excluded.
+        fields = ['title', 'company', 'location', 'skills', 'salary_min', 'source']
 
 class JobListAPI(generics.ListAPIView):
     queryset = Job.objects.all().order_by('-posted_at')
     serializer_class = JobSerializer
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['company', 'source', 'location', 'currency', 'salary_min']
-    search_fields = ['title', 'company', 'location', 'skills']
+
+    # Use our new custom filter class
+    filter_backends = [django_filters.DjangoFilterBackend]
+    filterset_class = JobFilter  # <--- Connect the class here
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
@@ -35,15 +54,14 @@ class JobListAPI(generics.ListAPIView):
         return response
 
 
-# --- New: Define what the User should send ---
+# --- 3. The Scraper Trigger (No changes here) ---
+
 class ScrapeRequestSerializer(serializers.Serializer):
-    keyword = serializers.CharField(default="Python", help_text="Job title or skill (e.g. 'Java')")
-    location = serializers.CharField(default="Europe", help_text="Region or City (e.g. 'Berlin')")
+    keyword = serializers.CharField(default="Python", help_text="Job title or skill")
+    location = serializers.CharField(default="Europe", help_text="Region or City")
 
 
 class ScrapeTriggerAPI(APIView):
-
-    # This decorator tells Swagger: "This endpoint uses this Serializer for inputs"
     @extend_schema(request=ScrapeRequestSerializer)
     def post(self, request):
         serializer = ScrapeRequestSerializer(data=request.data)
