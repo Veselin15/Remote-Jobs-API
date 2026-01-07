@@ -151,6 +151,9 @@ REST_FRAMEWORK = {
     ],
 
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
 }
 
 SPECTACULAR_SETTINGS = {
@@ -162,11 +165,11 @@ CELERY_BEAT_SCHEDULE = {
     'scrape-linkedin-morning': {
         'task': 'jobs.tasks.run_scrapers',
         'schedule': crontab(hour=8, minute=0),  # Runs at 8:00 AM UTC
-        'args': ('Python', 'Europe'),           # Default search
+        'args': ('Python', 'Europe'),  # Default search
     },
     'scrape-linkedin-evening': {
         'task': 'jobs.tasks.run_scrapers',
-        'schedule': crontab(hour=18, minute=0), # Runs at 6:00 PM UTC
+        'schedule': crontab(hour=18, minute=0),  # Runs at 6:00 PM UTC
         'args': ('Python', 'Europe'),
     },
 }

@@ -10,7 +10,8 @@ services:
       - POSTGRES_DB=remotejobs
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
-
+    ports:
+        - "5433:5432"
   # 2. The Message Broker (Redis)
   redis:
     image: redis:7
