@@ -172,4 +172,8 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(hour=18, minute=0),  # Runs at 6:00 PM UTC
         'args': ('Python', 'Europe'),
     },
+    'cleanup-old-jobs-daily': {
+        'task': 'jobs.tasks.cleanup_old_jobs',
+        'schedule': crontab(hour=0, minute=0),  # Runs at Midnight (00:00)
+    },
 }
