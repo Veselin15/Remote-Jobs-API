@@ -69,11 +69,19 @@ SENIORITY_MAP = {
     ]
 }
 
-# 4. Salary Ignore Terms (If a number is followed by these, it's NOT a salary)
+# 4. Salary Ignore Terms (Expanded)
 SALARY_IGNORE_TERMS = [
     r"people", r"employees", r"staff", r"members", r"users", r"customers",
     r"clients", r"downloads", r"active users", r"followers", r"subscribers",
     r"locations", r"countries", r"cities", r"offices", r"branches",
     r"products", r"services", r"projects", r"applications",
-    r"servers", r"nodes", r"requests", r"lines of code"
+    r"servers", r"nodes", r"requests", r"lines of code",
+    r"registered users", r"students", r"graduates", r"partners"
+]
+
+# 5. Salary Context Hints (NEW)
+SALARY_HINTS = [
+    r"salary", r"salary range", r"compensation", r"remuneration",
+    r"pay", r"yearly", r"annually", r"per year", r"per annum",
+    r"base", r"package", r"ote", r"earnings"
 ]

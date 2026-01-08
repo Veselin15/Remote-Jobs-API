@@ -72,57 +72,79 @@ def parse_salary(text):
     if not text:
         return None, None, None
 
-    # Identify Currency
     currency = "USD"
     if '€' in text or 'EUR' in text:
         currency = "EUR"
     elif '£' in text or 'GBP' in text:
         currency = "GBP"
     elif 'BGN' in text or 'lv' in text:
-        currency = "BGN"  # Added support for local currency if needed
+        currency = "BGN"
 
     text_lower = text.lower()
     clean_numbers = []
 
-    # Helper function to check if a match is "safe" (not followed by 'people', etc.)
-    def is_safe_match(match_obj):
-        end_pos = match_obj.end()
-        # Look at the next 20 characters
-        suffix = text_lower[end_pos:end_pos + 20]
+    # 1. STRICT VALIDATION HELPER
+    def is_valid_salary_match(match_obj, number_value, has_k_suffix):
+        start_pos, end_pos = match_obj.span()
 
-        for ignore_term in SALARY_IGNORE_TERMS:
-            # Check if the ignore term appears immediately after the number
-            if re.match(r'\s*' + ignore_term, suffix):
+        # A. LOOKAHEAD CHECK (Exclude "250,000+ registered users")
+        # Look at the next 40 characters for any ignore terms
+        suffix = text_lower[end_pos:end_pos + 40]
+        for term in SALARY_IGNORE_TERMS:
+            # Check if the ignore term appears anywhere in the next 40 chars
+            # We use regex boundries \b to match whole words (e.g. "users")
+            if re.search(r'\b' + re.escape(term) + r'\b', suffix):
                 return False
-        return True
+
+        # B. CONTEXT CHECK (The "Strict" Rule)
+        # If it has a 'k' (e.g. 80k), it's likely a salary. Accept it.
+        if has_k_suffix:
+            return True
+
+        # If it matches a strict currency pattern explicitly near the number (e.g. $250,000)
+        # We look 5 chars back and 5 chars forward for currency symbols
+        local_window = text_lower[max(0, start_pos - 5):min(len(text), end_pos + 5)]
+        if any(c in local_window for c in ['$', '€', '£', 'bgn', 'lv']):
+            return True
+
+        # If no 'k' and no currency symbol, we require a SALARY_HINT nearby (within 50 chars)
+        # This kills "250,000 users" but keeps "Salary: 250,000"
+        context_window = text_lower[max(0, start_pos - 50):min(len(text), end_pos + 50)]
+        for hint in SALARY_HINTS:
+            if re.search(r'\b' + re.escape(hint) + r'\b', context_window):
+                return True
+
+        # If it failed all checks, it's just a random number
+        return False
 
     # Strategy A: Ranges (80-100k)
-    # matches like "80-100k" or "80k - 100k"
     matches_k_range = re.finditer(r'(\d+)\s*[-–to]\s*(\d+)\s*[kK]', text_lower)
     for m in matches_k_range:
-        if is_safe_match(m):
+        # Ranges with 'k' are usually safe, but we still run the basic ignore check
+        if is_valid_salary_match(m, 0, has_k_suffix=True):
             n1 = int(m.group(1))
             n2 = int(m.group(2))
             clean_numbers.extend([n1 * 1000, n2 * 1000])
 
     # Strategy B: Individual numbers (60k, 60,000)
-    # Only run if Strategy A found nothing (to avoid double counting)
     if not clean_numbers:
         matches = re.finditer(r'(\d+[,\.]?\d*)\s*([kK])?', text_lower)
         for m in matches:
-            if not is_safe_match(m):
-                continue
-
             num_str = m.group(1)
             suffix = m.group(2)
+            has_k = (suffix and suffix.lower() == 'k')
 
             clean_str = num_str.replace(',', '').replace('.', '')
             if not clean_str.isdigit(): continue
-
             val = float(clean_str)
-            if suffix and suffix.lower() == 'k': val *= 1000
 
-            clean_numbers.append(val)
+            if has_k: val *= 1000
+
+            # Apply Strict Rules
+            if not is_valid_salary_match(m, val, has_k_suffix=has_k):
+                continue
+
+            clean_numbers.append(int(val))
 
     if not clean_numbers:
         return None, None, None
