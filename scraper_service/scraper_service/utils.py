@@ -80,8 +80,6 @@ def parse_salary(text):
         currency = "EUR"
     elif '£' in text or 'GBP' in text:
         currency = "GBP"
-    elif 'BGN' in text or 'lv' in text:
-        currency = "BGN"
 
     text_lower = text.lower()
     clean_numbers = []
