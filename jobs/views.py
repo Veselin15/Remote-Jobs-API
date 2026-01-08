@@ -6,6 +6,7 @@ from drf_spectacular.utils import extend_schema
 from .models import Job
 from .serializers import JobSerializer
 from .tasks import run_scrapers
+from rest_framework.pagination import PageNumberPagination
 
 # --- 1. Define the Custom Filter (The Input Boxes) ---
 class JobFilter(django_filters.FilterSet):
@@ -35,6 +36,7 @@ class JobListAPI(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
+        pagination_class = StandardResultsSetPagination
 
         # Handle Pagination (access 'results') vs No Pagination (access list directly)
         current_results = response.data['results'] if isinstance(response.data, dict) else response.data
@@ -82,3 +84,8 @@ class ScrapeTriggerAPI(APIView):
                 "note": "Check back in 2-3 minutes for results."
             })
         return Response(serializer.errors, status=400)
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size' # User can use ?page_size=50
+    max_page_size = 100
