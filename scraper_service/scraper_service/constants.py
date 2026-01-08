@@ -79,9 +79,20 @@ SALARY_IGNORE_TERMS = [
     r"registered users", r"students", r"graduates", r"partners"
 ]
 
-# 5. Salary Context Hints (NEW)
 SALARY_HINTS = [
     r"salary", r"salary range", r"compensation", r"remuneration",
     r"pay", r"yearly", r"annually", r"per year", r"per annum",
-    r"base", r"package", r"ote", r"earnings"
+    r"base", r"package", r"ote", r"earnings",
+    # Period hints (crucial for detecting '4000 per month')
+    r"per month", r"monthly", r"/mo", r"p\.m\.",
+    r"per hour", r"hourly", r"/hr", r"p\.h\.",
+    r"per day", r"daily"
 ]
+
+# 6. Period Multipliers (To convert everything to Annual)
+SALARY_MULTIPLIERS = {
+    'monthly': [r'per month', r'/month', r'/mo\b', r'monthly', r'p\.m\.'],
+    'yearly': [r'per year', r'/year', r'/yr\b', r'yearly', r'annually', r'p\.a\.', r'per annum'],
+    'hourly': [r'per hour', r'/hour', r'/hr\b', r'hourly', r'p\.h\.'],
+    'daily': [r'per day', r'/day', r'daily']
+}

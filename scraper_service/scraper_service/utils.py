@@ -1,5 +1,8 @@
 import re
-from .constants import TECH_KEYWORDS, NEGATION_PATTERNS, SENIORITY_MAP, SALARY_IGNORE_TERMS
+from .constants import (
+    TECH_KEYWORDS, NEGATION_PATTERNS, SENIORITY_MAP,
+    SALARY_IGNORE_TERMS, SALARY_HINTS, SALARY_MULTIPLIERS
+)
 
 
 def extract_skills(text):
@@ -69,9 +72,9 @@ def extract_seniority(title, description):
 
 
 def parse_salary(text):
-    if not text:
-        return None, None, None
+    if not text: return None, None, None
 
+    # 1. Detect Currency
     currency = "USD"
     if '€' in text or 'EUR' in text:
         currency = "EUR"
@@ -83,73 +86,70 @@ def parse_salary(text):
     text_lower = text.lower()
     clean_numbers = []
 
-    # 1. STRICT VALIDATION HELPER
-    def is_valid_salary_match(match_obj, number_value, has_k_suffix):
-        start_pos, end_pos = match_obj.span()
+    # --- Helper: Detect Multiplier based on context ---
+    def get_annual_multiplier(end_pos):
+        # Look 30 chars ahead (e.g., "5000 per month")
+        suffix = text_lower[end_pos:end_pos + 30]
 
-        # A. LOOKAHEAD CHECK (Exclude "250,000+ registered users")
-        # Look at the next 40 characters for any ignore terms
-        suffix = text_lower[end_pos:end_pos + 40]
-        for term in SALARY_IGNORE_TERMS:
-            # Check if the ignore term appears anywhere in the next 40 chars
-            # We use regex boundries \b to match whole words (e.g. "users")
-            if re.search(r'\b' + re.escape(term) + r'\b', suffix):
-                return False
+        for period, patterns in SALARY_MULTIPLIERS.items():
+            for pattern in patterns:
+                if re.search(pattern, suffix):
+                    if period == 'monthly': return 12
+                    if period == 'hourly': return 2080  # 40hr * 52w
+                    if period == 'daily': return 260  # 5d * 52w
+                    if period == 'yearly': return 1
+        return 1  # Default to yearly if unknown
 
-        # B. CONTEXT CHECK (The "Strict" Rule)
-        # If it has a 'k' (e.g. 80k), it's likely a salary. Accept it.
-        if has_k_suffix:
-            return True
+    # --- Helper: Validator ---
+    def is_valid_match(match_obj, has_k):
+        start, end = match_obj.span()
+        suffix = text_lower[end:end + 40]
 
-        # If it matches a strict currency pattern explicitly near the number (e.g. $250,000)
-        # We look 5 chars back and 5 chars forward for currency symbols
-        local_window = text_lower[max(0, start_pos - 5):min(len(text), end_pos + 5)]
-        if any(c in local_window for c in ['$', '€', '£', 'bgn', 'lv']):
-            return True
+        # 1. Ignore "250,000 users"
+        if any(re.search(r'\b' + re.escape(term) + r'\b', suffix) for term in SALARY_IGNORE_TERMS):
+            return False
 
-        # If no 'k' and no currency symbol, we require a SALARY_HINT nearby (within 50 chars)
-        # This kills "250,000 users" but keeps "Salary: 250,000"
-        context_window = text_lower[max(0, start_pos - 50):min(len(text), end_pos + 50)]
-        for hint in SALARY_HINTS:
-            if re.search(r'\b' + re.escape(hint) + r'\b', context_window):
-                return True
+        # 2. Accept if explicit currency, 'k' suffix, or salary keyword
+        window = text_lower[max(0, start - 50):min(len(text_lower), end + 50)]
+        if has_k: return True
+        if any(s in text_lower[max(0, start - 5):end + 5] for s in ['$', '€', '£', 'bgn']): return True
+        if any(re.search(r'\b' + h + r'\b', window) for h in SALARY_HINTS): return True
 
-        # If it failed all checks, it's just a random number
         return False
 
     # Strategy A: Ranges (80-100k)
-    matches_k_range = re.finditer(r'(\d+)\s*[-–to]\s*(\d+)\s*[kK]', text_lower)
-    for m in matches_k_range:
-        # Ranges with 'k' are usually safe, but we still run the basic ignore check
-        if is_valid_salary_match(m, 0, has_k_suffix=True):
-            n1 = int(m.group(1))
-            n2 = int(m.group(2))
-            clean_numbers.extend([n1 * 1000, n2 * 1000])
+    for m in re.finditer(r'(\d+)\s*[-–to]\s*(\d+)\s*[kK]', text_lower):
+        if is_valid_match(m, True):
+            mult = get_annual_multiplier(m.end())
+            clean_numbers.extend([int(m.group(1)) * 1000 * mult, int(m.group(2)) * 1000 * mult])
 
-    # Strategy B: Individual numbers (60k, 60,000)
+    # Strategy B: Ranges without k (4000-5000 / month)
     if not clean_numbers:
-        matches = re.finditer(r'(\d+[,\.]?\d*)\s*([kK])?', text_lower)
-        for m in matches:
-            num_str = m.group(1)
-            suffix = m.group(2)
-            has_k = (suffix and suffix.lower() == 'k')
+        for m in re.finditer(r'(\d+)\s*[-–to]\s*(\d+)', text_lower):
+            # Check if this range is followed by a period (e.g. /month)
+            mult = get_annual_multiplier(m.end())
+            # Only accept "naked" ranges if we found a period multiplier (implies it's a rate)
+            if mult > 1 and is_valid_match(m, False):
+                clean_numbers.extend([int(m.group(1)) * mult, int(m.group(2)) * mult])
 
-            clean_str = num_str.replace(',', '').replace('.', '')
-            if not clean_str.isdigit(): continue
-            val = float(clean_str)
+    # Strategy C: Individual numbers
+    if not clean_numbers:
+        for m in re.finditer(r'(\d+[,\.]?\d*)\s*([kK])?', text_lower):
+            val_str = m.group(1).replace(',', '').replace('.', '')
+            if not val_str.isdigit(): continue
 
+            val = float(val_str)
+            has_k = (m.group(2) and m.group(2).lower() == 'k')
             if has_k: val *= 1000
 
-            # Apply Strict Rules
-            if not is_valid_salary_match(m, val, has_k_suffix=has_k):
-                continue
+            if is_valid_match(m, has_k):
+                mult = get_annual_multiplier(m.end())
+                annual_val = val * mult
 
-            clean_numbers.append(int(val))
+                # Sanity Check (Annualized)
+                if 15000 <= annual_val <= 500000:
+                    clean_numbers.append(int(annual_val))
 
-    if not clean_numbers:
-        return None, None, None
+    if not clean_numbers: return None, None, None
 
-    salary_min = min(clean_numbers)
-    salary_max = max(clean_numbers) if len(clean_numbers) > 1 else salary_min
-
-    return salary_min, salary_max, currency
+    return min(clean_numbers), max(clean_numbers), currency
