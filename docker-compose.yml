@@ -18,6 +18,8 @@ services:
 
   # 3. The API (Django)
   web:
+    env_file:
+      - .env
     build: .
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
@@ -33,6 +35,8 @@ services:
 
   # 4. The Worker (Executes the scraping tasks)
   celery:
+    env_file:
+      - .env
     build: .
     command: celery -A config worker --loglevel=info
     volumes:

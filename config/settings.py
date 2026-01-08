@@ -83,9 +83,9 @@ if os.environ.get("DATABASE_URL"):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'remotejobs',
-            'USER': 'user',
-            'PASSWORD': 'password',
+            'NAME': os.environ.get('POSTGRES_DB', 'remotejobs'),
+            'USER': os.environ.get('POSTGRES_USER', 'user'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'password'),
             'HOST': 'db',
             'PORT': 5432,
         }
