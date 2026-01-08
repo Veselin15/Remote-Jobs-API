@@ -1,4 +1,5 @@
 import re
+from datetime import date, timedelta
 from .constants import (
     TECH_KEYWORDS, NEGATION_PATTERNS, SENIORITY_MAP,
     SALARY_IGNORE_TERMS, SALARY_HINTS, SALARY_MULTIPLIERS
@@ -151,3 +152,30 @@ def parse_salary(text):
     if not clean_numbers: return None, None, None
 
     return min(clean_numbers), max(clean_numbers), currency
+
+def parse_relative_date(text):
+    """Converts '3 days ago', '1 week ago' to a real date object."""
+    if not text:
+        return date.today()
+
+    text = text.lower().strip()
+    today = date.today()
+
+    if 'hour' in text or 'minute' in text or 'second' in text:
+        return today
+
+    try:
+        # Extract the number (e.g. "3" from "3 days ago")
+        number = int(''.join(filter(str.isdigit, text)))
+
+        if 'day' in text:
+            return today - timedelta(days=number)
+        if 'week' in text:
+            return today - timedelta(weeks=number)
+        if 'month' in text:
+            return today - timedelta(days=number * 30)
+
+    except ValueError:
+        pass
+
+    return today

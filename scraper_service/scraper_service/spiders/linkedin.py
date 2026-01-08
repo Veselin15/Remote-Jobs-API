@@ -1,6 +1,6 @@
 import scrapy
 from datetime import date
-
+from ..utils import parse_relative_date
 
 class LinkedInSpider(scrapy.Spider):
     name = "linkedin"
@@ -20,6 +20,7 @@ class LinkedInSpider(scrapy.Spider):
             company = job.css("h4.base-search-card__subtitle a::text").get()
             location = job.css("span.job-search-card__location::text").get()
             raw_url = job.css("a.base-card__full-link::attr(href)").get()
+            date_text = job.css('time.job-search-card__listdate::text').get()
 
             if not title or not raw_url:
                 continue
@@ -28,6 +29,7 @@ class LinkedInSpider(scrapy.Spider):
             clean_company = company.strip() if company else "Unknown"
             clean_location = location.strip() if location else "Remote"
             clean_url = raw_url.split('?')[0]
+            real_date = parse_relative_date(date_text)
 
             # --- FIX STARTS HERE ---
             try:
@@ -54,7 +56,7 @@ class LinkedInSpider(scrapy.Spider):
                     'location': clean_location,
                     'url': clean_url,
                     'source': "LinkedIn",
-                    'posted_at': date.today()
+                    'posted_at': real_date,
                 }
                 yield scrapy.Request(url=detail_url, callback=self.parse_detail, meta={'item': item})
 
@@ -66,7 +68,7 @@ class LinkedInSpider(scrapy.Spider):
                     'location': clean_location,
                     'url': clean_url,
                     'source': "LinkedIn",
-                    'posted_at': date.today(),
+                    'posted_at': real_date,
                     'description': "",
                     'salary_min': None,
                     'salary_max': None,
