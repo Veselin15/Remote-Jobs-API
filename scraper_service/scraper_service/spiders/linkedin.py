@@ -6,16 +6,12 @@ class LinkedInSpider(scrapy.Spider):
     name = "linkedin"
 
     def start_requests(self):
-        # 1. Get arguments passed from the command line (or default to Python/Europe)
-        # Scrapy automatically sets any -a arguments as attributes on the spider instance
         keyword = getattr(self, 'keyword', 'Python')
         location = getattr(self, 'location', 'Europe')
-
-        # 2. Construct the Dynamic URL
         base_url = f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={keyword}&location={location}&start={{}}"
 
-        # We scrape pages 0, 25, 50, 75, 100
-        for i in range(0, 101, 25):
+        # --- UPDATED: Scrape deeper (0 to 400 instead of 100) ---
+        for i in range(0, 401, 25):
             yield scrapy.Request(url=base_url.format(i), callback=self.parse_list)
 
     def parse_list(self, response):

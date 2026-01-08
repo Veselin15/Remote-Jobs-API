@@ -1,5 +1,5 @@
 import re
-from .constants import TECH_KEYWORDS, NEGATION_PATTERNS, SENIORITY_MAP  # <--- Import from new file
+from .constants import TECH_KEYWORDS, NEGATION_PATTERNS, SENIORITY_MAP, SALARY_IGNORE_TERMS
 
 
 def extract_skills(text):
