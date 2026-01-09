@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     # Your apps
     'corsheaders',
     'jobs',
+    'payments',
 ]
 
 MIDDLEWARE = [
@@ -186,3 +187,15 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+# --- STRIPE CONFIGURATION ---
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY', 'sk_test_...')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', 'pk_test_...')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', 'whsec_...')
+
+# Premium Price ID (Create this in your Stripe Dashboard)
+STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID', 'price_12345...')
+
+# --- EMAIL CONFIGURATION (Dev Mode) ---
+# This prints emails to the console/logs. Change to 'smtp' for production.
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@remotejobsapi.com'
