@@ -10,19 +10,20 @@ from rest_framework_api_key.models import APIKey
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
+# --- ADD THIS DECORATOR HERE ---
+@method_decorator(csrf_exempt, name='dispatch')
 class CreateCheckoutSessionView(View):
     """
     1. Frontend calls this to get a payment URL.
     2. We redirect user to Stripe.
     """
-
     def post(self, request, *args, **kwargs):
-        domain_url = 'http://localhost:5173'  # Frontend URL
+        domain_url = 'http://localhost:5173'
         try:
             checkout_session = stripe.checkout.Session.create(
                 payment_method_types=['card'],
                 line_items=[{
-                    'price': settings.STRIPE_PRICE_ID,  # The Product ID from Stripe
+                    'price': settings.STRIPE_PRICE_ID,
                     'quantity': 1,
                 }],
                 mode='subscription',
