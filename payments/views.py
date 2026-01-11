@@ -1,11 +1,13 @@
 import stripe
 from django.conf import settings
 from django.http import JsonResponse, HttpResponse
+from django.shortcuts import redirect
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.core.mail import send_mail
 from rest_framework_api_key.models import APIKey
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -18,7 +20,7 @@ class CreateCheckoutSessionView(View):
     2. We redirect user to Stripe.
     """
     def post(self, request, *args, **kwargs):
-        domain_url = 'http://localhost:5173'
+        domain_url = 'http://localhost:8000'
         try:
             checkout_session = stripe.checkout.Session.create(
                 payment_method_types=['card'],
@@ -27,10 +29,14 @@ class CreateCheckoutSessionView(View):
                     'quantity': 1,
                 }],
                 mode='subscription',
-                success_url=domain_url + '/success?session_id={CHECKOUT_SESSION_ID}',
-                cancel_url=domain_url + '/cancel',
+                #Redirect back to Dashboard with a flag
+                success_url=domain_url + '/dashboard/?success=true',
+                cancel_url=domain_url + '/dashboard/?canceled=true',
+
+                client_reference_id=request.user.id,
+                customer_email=request.user.email,
             )
-            return JsonResponse({'url': checkout_session.url})
+            return redirect(checkout_session.url)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
