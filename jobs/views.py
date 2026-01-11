@@ -2,12 +2,18 @@ import re
 from rest_framework import generics, filters, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from django_filters import rest_framework as django_filters # <--- Rename for clarity
+from django_filters import rest_framework as django_filters
 from drf_spectacular.utils import extend_schema
+from rest_framework.pagination import PageNumberPagination
+
+# --- NEW SECURITY IMPORTS ---
+from rest_framework_api_key.permissions import HasAPIKey
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from .throttles import FreeTierThrottle, PremiumTierThrottle # <--- Import your throttles
+
 from .models import Job
 from .serializers import JobSerializer
 from .tasks import run_scrapers
-from rest_framework.pagination import PageNumberPagination
 
 # --- 1. Define the Custom Filter (The Input Boxes) ---
 class JobFilter(django_filters.FilterSet):
@@ -39,10 +45,10 @@ class JobFilter(django_filters.FilterSet):
 class JobListAPI(generics.ListAPIView):
     queryset = Job.objects.all().order_by('-posted_at')
     serializer_class = JobSerializer
-
-    # Use our new custom filter class
     filter_backends = [django_filters.DjangoFilterBackend]
-    filterset_class = JobFilter  # <--- Connect the class here
+    filterset_class = JobFilter
+
+    throttle_classes = [PremiumTierThrottle, FreeTierThrottle]
 
     def list(self, request, *args, **kwargs):
         response = super().list(request, *args, **kwargs)
