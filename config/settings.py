@@ -46,6 +46,8 @@ INSTALLED_APPS = [
     # Your apps
     'jobs',
     'payments',
+    'core',
+    'django.contrib.humanize',
 ]
 
 MIDDLEWARE = [
@@ -63,7 +65,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -193,3 +195,7 @@ STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID', 'price_12345...')
 # This prints emails to the console/logs. Change to 'smtp' for production.
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'noreply@remotejobsapi.com'
+
+
+LOGIN_REDIRECT_URL = '/dashboard/'
+LOGOUT_REDIRECT_URL = '/'
