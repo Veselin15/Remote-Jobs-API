@@ -48,11 +48,15 @@ def run_bulk_scrape():
     ], cwd="/app/scraper_service")
     results.append("WeWorkRemotely")
 
+    # Inside run_bulk_scrape
+    subprocess.run(["scrapy", "crawl", "remoteok"], cwd="/app/scraper_service")
+    results.append("RemoteOK")
+
     # --- PART 2: LinkedIn (The Heavy Lifter) ---
     # We loop through popular keywords to build a rich database.
     # Note: Keep this list focused to avoid hitting LinkedIn rate limits.
-    tech_stack = ["Python", "JavaScript", "React", "Django", "DevOps", "Data"]
-    regions = ["Remote", "Europe", "United States"]
+    tech_stack = ["Python", "JavaScript", "React", "DevOps", "Data", "C++", "C#", ".NET", "Java", "PHP"]
+    regions = ["Remote", "Europe", "United States", "United Kingdom", "Australia", "Canada"]
 
     for tech in tech_stack:
         for region in regions:
