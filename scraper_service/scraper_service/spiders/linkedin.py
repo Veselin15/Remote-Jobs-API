@@ -1,6 +1,8 @@
 import scrapy
 from datetime import date
 from ..utils import parse_relative_date
+from ..items import JobItem
+
 
 class LinkedInSpider(scrapy.Spider):
     name = "linkedin"
@@ -10,8 +12,8 @@ class LinkedInSpider(scrapy.Spider):
         location = getattr(self, 'location', 'Europe')
         base_url = f"https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords={keyword}&location={location}&start={{}}"
 
-        # --- UPDATED: Scrape deeper (0 to 400 instead of 100) ---
-        for i in range(0, 401, 25):
+        # Scrape 0 to 100 (keep it low for testing, increase later)
+        for i in range(0, 101, 25):
             yield scrapy.Request(url=base_url.format(i), callback=self.parse_list)
 
     def parse_list(self, response):
@@ -31,61 +33,44 @@ class LinkedInSpider(scrapy.Spider):
             clean_url = raw_url.split('?')[0]
             real_date = parse_relative_date(date_text)
 
-            # --- FIX STARTS HERE ---
-            try:
-                # 1. Get the slug part: "view/freelance-job-name-123456"
-                slug = raw_url.split("view/")[1].split("/")[0].split("?")[0]
+            # --- Create the JobItem ---
+            item = JobItem()
+            item['title'] = clean_title
+            item['company'] = clean_company
+            item['location'] = clean_location
+            item['url'] = clean_url
+            item['source'] = "LinkedIn"
+            item['posted_at'] = real_date
+            item['skills'] = []  # Default empty list
+            item['salary_min'] = None
+            item['salary_max'] = None
+            item['currency'] = None
 
-                # 2. The ID is usually the LAST part of the slug separated by dashes
-                # Example: "python-dev-12345" -> "12345"
+            try:
+                # Extract ID to get full description
+                slug = raw_url.split("view/")[1].split("/")[0].split("?")[0]
                 job_id = slug.split('-')[-1]
 
-                # Verify it's a number (sometimes urls are weird)
                 if not job_id.isdigit():
-                    # Fallback: sometimes the ID is just the slug itself if it's purely numeric
-                    if slug.isdigit():
-                        job_id = slug
-                    else:
-                        raise IndexError("ID not found")
+                    job_id = slug if slug.isdigit() else None
 
-                detail_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
-
-                item = {
-                    'title': clean_title,
-                    'company': clean_company,
-                    'location': clean_location,
-                    'url': clean_url,
-                    'source': "LinkedIn",
-                    'posted_at': real_date,
-                }
-                yield scrapy.Request(url=detail_url, callback=self.parse_detail, meta={'item': item})
+                if job_id:
+                    detail_url = f"https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
+                    yield scrapy.Request(url=detail_url, callback=self.parse_detail, meta={'item': item})
+                else:
+                    item['description'] = ""
+                    yield item
 
             except (IndexError, ValueError):
-                # Fallback: Save without description if we can't get the ID
-                yield {
-                    'title': clean_title,
-                    'company': clean_company,
-                    'location': clean_location,
-                    'url': clean_url,
-                    'source': "LinkedIn",
-                    'posted_at': real_date,
-                    'description': "",
-                    'salary_min': None,
-                    'salary_max': None,
-                    'currency': None
-                }
+                item['description'] = ""
+                yield item
 
     def parse_detail(self, response):
-        # Retrieve the item we passed from the previous function
         item = response.meta['item']
 
-        # Extract the full description text
-        # LinkedIn Guest view usually puts it in 'div.show-more-less-html__markup'
+        # Extract Description
         description_html = response.css("div.show-more-less-html__markup").get()
-
-        # We strip HTML tags to just get the text for scanning
         if description_html:
-            # Simple text extraction (removes <br>, <div> etc)
             text_content = response.css("div.show-more-less-html__markup *::text").getall()
             item['description'] = " ".join(text_content).strip()
         else:
